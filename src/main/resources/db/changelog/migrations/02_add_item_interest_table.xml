@@ -1,0 +1,19 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="1688979921468-1" author="luka.brzakovic">
+        <createTable tableName="item_interest">
+            <column name="id" autoIncrement="true" type="BIGINT"><constraints primaryKey="true"/></column>
+            <column name="item_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="user_id" type="VARCHAR(255)" ><constraints nullable="false"></constraints></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="1688979921468-2" author="luka.brzakovic">
+        <addForeignKeyConstraint baseTableName="item_interest" baseColumnNames="item_id" constraintName="fk_item_interest_item_id" referencedTableName="item"
+                                 referencedColumnNames="id" deferrable="false" onDelete="NO ACTION" onUpdate="NO ACTION"></addForeignKeyConstraint>
+    </changeSet>
+</databaseChangeLog>

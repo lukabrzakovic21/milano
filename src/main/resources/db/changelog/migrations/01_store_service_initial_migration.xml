@@ -1,0 +1,61 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="1688651004327-1" author="luka.brzakovic">
+        <createTable tableName="item">
+            <column name="id" autoIncrement="true" type="BIGINT"><constraints primaryKey="true"/></column>
+            <column name="public_id" type="UUID" ><constraints nullable="false" unique="true"/></column>
+            <column name="name" type="VARCHAR(255)"><constraints nullable="false" /></column>
+            <column name="type" type="VARCHAR(255)"><constraints nullable="false" /></column>
+            <column name="price" type="DECIMAL" defaultValue="0" ></column>
+            <column name="number_left" type="INTEGER" defaultValue="0"></column>
+            <column name="created_at" type="TIMESTAMP WITHOUT TIME ZONE"></column>
+            <column name="updated_at" type="TIMESTAMP WITHOUT TIME ZONE" ></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="1688651004327-2" author="luka.brzakovic">
+        <createTable tableName="invoice">
+            <column name="id" autoIncrement="true" type="BIGINT"><constraints primaryKey="true"/></column>
+            <column name="public_id" type="UUID" ><constraints nullable="false" unique="true" /></column>
+            <column name="user_id" type="VARCHAR(255)"><constraints nullable="false" /></column>
+            <column name="balance" type="DECIMAL" defaultValue="0"><constraints nullable="false" /></column>
+            <column name="number" type="varchar(255)" ><constraints nullable="false" unique="true" /></column>
+            <column name="valid_until" type="TIMESTAMP WITHOUT TIME ZONE"></column>
+            <column name="created_at" type="TIMESTAMP WITHOUT TIME ZONE" ></column>
+            <column name="updated_at" type="TIMESTAMP WITHOUT TIME ZONE" ></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="1688651004327-3" author="luka.brzakovic">
+        <createTable tableName="transaction">
+            <column name="id" autoIncrement="true" type="BIGINT"><constraints primaryKey="true"/></column>
+            <column name="public_id" type="UUID" ><constraints nullable="false" unique="true" /></column>
+            <column name="invoice_id" type="BIGINT"><constraints nullable="false" /></column>
+            <column name="date_executed" type="TIMESTAMP WITHOUT TIME ZONE" ></column>
+            <column name="amount" type="DECIMAL" ></column>
+            <column name="reason" type="VARCHAR(255)"></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="1688651004327-4" author="luka.brzakovic">
+        <createTable tableName="purchase_history">
+            <column name="id" autoIncrement="true" type="BIGINT"><constraints primaryKey="true"/></column>
+            <column name="item_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="user_id" type="VARCHAR(255)" ><constraints nullable="false"></constraints></column>
+            <column name="date" type="TIMESTAMP WITHOUT TIME ZONE" ></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="1688651004327-5" author="luka.brzakovic">
+        <addForeignKeyConstraint baseTableName="transaction" baseColumnNames="invoice_id" constraintName="fk_transaction_invoice_id" referencedTableName="invoice"
+                                 referencedColumnNames="id" deferrable="false" onDelete="NO ACTION" onUpdate="NO ACTION"></addForeignKeyConstraint>
+    </changeSet>
+
+    <changeSet id="1688651004327-6" author="luka.brzakovic">
+        <addForeignKeyConstraint baseTableName="purchase_history" baseColumnNames="item_id" constraintName="fk_purchase_history_item_id" referencedTableName="item"
+                                 referencedColumnNames="id" deferrable="false" onDelete="NO ACTION" onUpdate="NO ACTION"></addForeignKeyConstraint>
+    </changeSet>
+</databaseChangeLog>
