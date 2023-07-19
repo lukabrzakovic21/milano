@@ -2,6 +2,8 @@ package com.master.milano.repository;
 
 import com.master.milano.common.model.Item;
 import com.master.milano.common.util.ItemType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.stereotype.Repository;
@@ -14,4 +16,5 @@ public interface ItemRepository extends PagingAndSortingRepository<Item, Integer
 
     Optional<Item> findByType(ItemType type);
     Optional<Item> findByPublicId(UUID publicId);
+    Page<Item> findAllByType(Pageable pageable, ItemType type);
 }

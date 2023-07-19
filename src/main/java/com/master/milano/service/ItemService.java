@@ -12,6 +12,7 @@ import com.master.milano.common.model.Item;
 import com.master.milano.common.model.ItemInterest;
 import com.master.milano.common.model.PurchaseHistory;
 import com.master.milano.common.model.Transaction;
+import com.master.milano.common.util.ItemType;
 import com.master.milano.common.util.TransactionReason;
 import com.master.milano.exception.invoice.InvoiceInsufficientFundsException;
 import com.master.milano.exception.invoice.InvoiceNotFoundException;
@@ -20,12 +21,14 @@ import com.master.milano.exception.item.ItemCanBeBoughtException;
 import com.master.milano.exception.item.ItemNotFoundException;
 import com.master.milano.exception.item.NoMoreItemsException;
 import com.master.milano.exception.item.UserAlreadyInterestInItem;
+import com.master.milano.exception.util.UnauthorizedException;
 import com.master.milano.manipulator.ItemManipulator;
 import com.master.milano.repository.InvoiceRepository;
 import com.master.milano.repository.ItemInterestRepository;
 import com.master.milano.repository.ItemRepository;
 import com.master.milano.repository.PurchaseHistoryRepository;
 import com.master.milano.validator.ItemValidator;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -61,8 +64,7 @@ public class ItemService {
         this.purchaseHistoryRepository = purchaseHistoryRepository;
         this.itemInterestRepository = itemInterestRepository;
         this.istanbul = istanbul;
-        this.rabbitMqService = rabbitMqService;
-    }
+        this.rabbitMqService = rabbitMqService;}
 
     public ItemDTO createItem(ItemDTO itemDto) {
 
@@ -76,13 +78,16 @@ public class ItemService {
     }
 
 
-    public List<ItemDTO> getAllItems() {
-        // admin i prodavac mogu da dohvate sve, i one sa numberLeft = -1, kupac moze samo one gde je numberLeft >=0
-        //dodaj limit, offset, filtere
-        //proveri ovo sranje jos koji put
-        itemRepository.findAll(PageRequest.of(0, 1, Sort.by(Sort.Direction.ASC, "seatNumber")));
-        var allItems = itemRepository.findAll();
-        var itemsAsList = StreamSupport.stream(allItems.spliterator(), false)
+    public List<ItemDTO> getAllItems(Integer limit, Integer pageSize, String  sortBy, String sortDirection, String type) {
+        itemValidator.validateParams(limit, pageSize, sortBy, sortDirection, type);
+        Page<Item> allItemsPageable = null;
+        if(type.isEmpty()) {
+            allItemsPageable = itemRepository.findAll(PageRequest.of(pageSize, limit, Sort.by(Sort.Direction.fromString(sortDirection), sortBy)));
+        }
+        else {
+            allItemsPageable = itemRepository.findAllByType(PageRequest.of(pageSize, limit, Sort.by(Sort.Direction.fromString(sortDirection), sortBy)), ItemType.fromString(type));
+        }
+        var itemsAsList = StreamSupport.stream(allItemsPageable.get().spliterator(), false)
                 .map(itemManipulator::modelToDTO)
                 .collect(Collectors.toList());
         return itemsAsList;
@@ -102,7 +107,6 @@ public class ItemService {
 
         var item = itemRepository.findByPublicId(publicId);
         if(item.isEmpty()) {
-//            logger.warn("Registration request with provided id: {} does not exist.", publicId);
             throw new ItemNotFoundException(String.format("Item with provided id:%s does not exist.", publicId));
         }
         var foundedItem = item.get();
@@ -112,13 +116,14 @@ public class ItemService {
         return itemManipulator.modelToDTO(foundedItem);
     }
 
-    public PurchaseDTO buyItem(UUID publicId, UserWithInvoice request) {
+    public PurchaseDTO buyItem(UUID publicId, UserWithInvoice request, String authorizationHeader) {
 
         var item = itemRepository.findByPublicId(publicId);
         if(item.isEmpty()) {
 //            logger.warn("Registration request with provided id: {} does not exist.", publicId);
             throw new ItemNotFoundException(String.format("Item with provided id:%s does not exist.", publicId));
         }
+
         var foundedItem = item.get();
 
         if(foundedItem.getNumberLeft()<=0) {
@@ -133,13 +138,16 @@ public class ItemService {
 
         var invoiceWithInfo = invoice.get();
 
+        if(!invoiceWithInfo.getUserId().equalsIgnoreCase(request.getUserId())) {
+            throw new UnauthorizedException("User cannot access invoice that is assigned to other users");
+        }
 
         if(invoiceWithInfo.getBalance().compareTo(foundedItem.getPrice())==-1) {
             throw new InvoiceInsufficientFundsException(String.format("User with id %s doesn't have enough money to buy item with id: %s", request.getUserId(), publicId.toString()));
         }
 
         try {
-            istanbul.getUserByPublicId(request.getUserId(), false);
+            istanbul.getUserByPublicId(request.getUserId(), false, authorizationHeader);
         } catch (Exception exception) {
             throw new ItemBadRequest("User with this id doesn't exist");
         }
@@ -189,7 +197,10 @@ public class ItemService {
                 .build();
     }
 
-    public List<PurchaseDTO> getPurchaseHistory(String userId) {
+    public List<PurchaseDTO> getPurchaseHistory(String userId, String sessionUserId, String role) {
+        if(!"ADMIN".equalsIgnoreCase(role) && !sessionUserId.equalsIgnoreCase(userId)) {
+            throw new UnauthorizedException("User cannot access information about other users.");
+        }
         var history = purchaseHistoryRepository.getAllByUserId(userId);
         var historyAsList = StreamSupport.stream(history.spliterator(), false)
                 .map(this::fromModel)
@@ -205,7 +216,7 @@ public class ItemService {
                 .build();
     }
 
-    public ItemInterestDTO interestInItem(String userId, String itemId) {
+    public ItemInterestDTO interestInItem(String userId, String itemId, String authorizationHeader) {
 
         var item = itemRepository.findByPublicId(UUID.fromString(itemId));
         if(item.isEmpty()) {
@@ -218,6 +229,10 @@ public class ItemService {
             throw new ItemCanBeBoughtException("This item is in stock. You can try to buy it.");
         }
 
+        if(foundedItem.getNumberLeft()==-1) {
+            throw new ItemNotFoundException("This item is removed permanently. It cannot be bought again.");
+        }
+
         var interest = itemInterestRepository.findByUserIdAndItem(userId, foundedItem);
         if(interest.isPresent()) {
             throw new UserAlreadyInterestInItem("This user has already been interested in this item");
@@ -225,7 +240,7 @@ public class ItemService {
 
         //check user existence in istanbul service
         try {
-            istanbul.getUserByPublicId(userId, false);
+            istanbul.getUserByPublicId(userId, false, authorizationHeader);
         } catch (Exception exception) {
             throw new ItemBadRequest("User with this id doesn't exist");
         }
@@ -257,6 +272,10 @@ public class ItemService {
             throw new ItemNotFoundException(String.format("Item with provided id:%s does not exist.", publicId));
         }
         var foundedItem = item.get();
+
+        if(foundedItem.getNumberLeft()==-1) {
+            throw new ItemNotFoundException("This item is removed permanently. It cannot be bought again.");
+        }
 
         foundedItem.setNumberLeft(foundedItem.getNumberLeft() + increment);
         itemRepository.save(foundedItem);

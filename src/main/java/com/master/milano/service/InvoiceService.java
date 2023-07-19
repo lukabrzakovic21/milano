@@ -6,6 +6,7 @@ import com.master.milano.common.model.Transaction;
 import com.master.milano.common.util.TransactionReason;
 import com.master.milano.exception.invoice.InvoiceInsufficientFundsException;
 import com.master.milano.exception.invoice.InvoiceNotFoundException;
+import com.master.milano.exception.util.UnauthorizedException;
 import com.master.milano.manipulator.InvoiceManipulator;
 import com.master.milano.repository.InvoiceRepository;
 import com.master.milano.validator.InvoiceValidator;
@@ -29,9 +30,9 @@ public class InvoiceService {
         this.invoiceValidator = invoiceValidator;
     }
 
-    public InvoiceDTO createInvoice(InvoiceDTO invoiceDTO) {
+    public InvoiceDTO createInvoice(InvoiceDTO invoiceDTO, String authorizationHeader) {
 
-        invoiceValidator.validateInvoice(invoiceDTO);
+        invoiceValidator.validateInvoice(invoiceDTO, authorizationHeader);
 
         var invoice = invoiceManipulator.dtoToModel(invoiceDTO);
 
@@ -41,18 +42,21 @@ public class InvoiceService {
 
     }
 
-    public InvoiceDTO getByInvoiceNumber(String invoiceNumber) {
+    public InvoiceDTO getByInvoiceNumber(String invoiceNumber, String sessionUserId) {
 
         var invoice  = invoiceRepository.findByNumber(invoiceNumber);
 
         if(invoice.isEmpty()) {
             throw new InvoiceNotFoundException("Invoice with this number does not exist.");
         }
+        if(!invoice.get().getUserId().equalsIgnoreCase(sessionUserId)) {
+            throw new UnauthorizedException("User cannot access invoice that is assigned to other users");
+        }
 
         return invoiceManipulator.modelToDTO(invoice.get());
     }
 
-    public InvoiceDTO withdrawMoneyFromInvoice(String invoiceNumber, BigDecimal amount) {
+    public InvoiceDTO withdrawMoneyFromInvoice(String invoiceNumber, BigDecimal amount, String sessionUserId) {
 
         var invoice  = invoiceRepository.findByNumber(invoiceNumber);
 
@@ -61,6 +65,10 @@ public class InvoiceService {
         }
 
         var invoiceWithInfo = invoice.get();
+
+        if(!invoice.get().getUserId().equalsIgnoreCase(sessionUserId)) {
+            throw new UnauthorizedException("User cannot access invoice that is assigned to other users");
+        }
         if(invoiceWithInfo.getBalance().subtract(amount).compareTo(BigDecimal.ZERO) == -1) {
 
             throw new InvoiceInsufficientFundsException(String.format("Invoice with number %s doesn't have enough funds.", invoiceNumber));
@@ -78,7 +86,7 @@ public class InvoiceService {
 
     }
 
-    public InvoiceDTO increaseInvoiceBalance(String invoiceNumber, BigDecimal amount) {
+    public InvoiceDTO increaseInvoiceBalance(String invoiceNumber, BigDecimal amount, String sessionUserId) {
 
         var invoice  = invoiceRepository.findByNumber(invoiceNumber);
 
@@ -87,6 +95,9 @@ public class InvoiceService {
         }
 
         var invoiceWithInfo = invoice.get();
+        if(!invoiceWithInfo.getUserId().equalsIgnoreCase(sessionUserId)) {
+            throw new UnauthorizedException("User cannot access invoice that is assigned to other users");
+        }
         invoiceWithInfo.setBalance(invoiceWithInfo.getBalance().add(amount));
 
         var transaction  =  addTransaction(invoiceWithInfo, amount, TransactionReason.INVOICE_PAYMENT);

@@ -8,6 +8,7 @@ import com.master.milano.exception.item.ItemBadRequest;
 import com.master.milano.repository.InvoiceRepository;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 
 @Component
@@ -21,26 +22,29 @@ public class InvoiceValidator {
         this.istanbul = istanbul;
     }
 
-    public void validateInvoice(InvoiceDTO invoiceDTO) {
+    public void validateInvoice(InvoiceDTO invoiceDTO, String authorizationHeader) {
 
             if(Objects.isNull(invoiceDTO) || Objects.isNull(invoiceDTO.getNumber()) || Objects.isNull(invoiceDTO.getBalance())
                     || Objects.isNull(invoiceDTO.getValidUntil()) || Objects.isNull(invoiceDTO.getUserId())) {
                 throw new InvoiceBadRequest("All fields are mandatory");
             }
             if(invoiceDTO.getNumber().isBlank() || invoiceDTO.getUserId().isBlank()) {
-                throw new ItemBadRequest("All fields are mandatory");
+                throw new InvoiceBadRequest("All fields are mandatory");
+            }
+            if(invoiceDTO.getBalance().compareTo(BigDecimal.ZERO)==-1) {
+                throw new InvoiceBadRequest("Invoice balance can't be lower than 0.");
             }
 
             if(checkIfInvoiceAlreadyExist(invoiceDTO.getNumber())) {
-                throw new ItemBadRequest("Invoice with that number already exists.");
+                throw new InvoiceBadRequest("Invoice with that number already exists.");
             }
 
         //check userExistence, call Istanbul service
 
         try {
-            istanbul.getUserByPublicId(invoiceDTO.getUserId(), false);
+            istanbul.getUserByPublicId(invoiceDTO.getUserId(), false, authorizationHeader);
         } catch (Exception exception) {
-            throw new ItemBadRequest("User with this id doesn't exist");
+            throw new InvoiceBadRequest("User with this id doesn't exist");
         }
     }
 

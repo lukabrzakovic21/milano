@@ -9,6 +9,7 @@ import com.master.milano.exception.item.ItemNotFoundException;
 import com.master.milano.exception.item.NoMoreItemsException;
 import com.master.milano.exception.item.UserAlreadyInterestInItem;
 import com.master.milano.exception.util.ErrorResponse;
+import com.master.milano.exception.util.UnauthorizedException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -74,5 +75,12 @@ public class CustomExceptionHandler extends ResponseEntityExceptionHandler {
 
         return  handleExceptionInternal(exception, new ErrorResponse(409, exception.getMessage()),
                 new HttpHeaders(), HttpStatusCode.valueOf(409), webRequest);
+    }
+
+    @ExceptionHandler(value = UnauthorizedException.class)
+    protected ResponseEntity<Object> handleUnauthorizedException(RuntimeException exception, WebRequest webRequest) {
+
+        return  handleExceptionInternal(exception, new ErrorResponse(403, exception.getMessage()),
+                new HttpHeaders(), HttpStatusCode.valueOf(403), webRequest);
     }
 }
