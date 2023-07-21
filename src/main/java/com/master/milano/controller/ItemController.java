@@ -78,7 +78,7 @@ public class ItemController {
     //prodavac
     @DeleteMapping("perm/{publicId}")
     public ResponseEntity<ItemDTO> removeItemPermanently(@PathVariable String publicId) {
-        logger.info("Removing item temporarily with id: {}", publicId);
+        logger.info("Removing item permanently with id: {}", publicId);
 
         return ok(itemService.removeItem(UUID.fromString(publicId), false));
     }

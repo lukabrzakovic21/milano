@@ -42,7 +42,7 @@ public class InvoiceController {
 
     @GetMapping("/{invoiceNumber}")
     public ResponseEntity<InvoiceDTO> getByInvoiceNumber(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization, @PathVariable String invoiceNumber) {
-
+        logger.info("Get invoice by invoice number: {}", invoiceNumber);
         var authorizationHeader = authorization.replace("Bearer ", "");
         var jwtBody = jwtUtil.retrieveAllClaims(authorizationHeader);
         var sessionUserId = (String)jwtBody.get("public_id");
@@ -54,6 +54,7 @@ public class InvoiceController {
                                                              @PathVariable String invoiceNumber,
                                                              @RequestBody InvoiceNumberWithPrice amount) {
 
+        logger.info("Increase invoice balance for {} dollars with invoice number {}", amount.getAmount(), invoiceNumber);
         var authorizationHeader = authorization.replace("Bearer ", "");
         var jwtBody = jwtUtil.retrieveAllClaims(authorizationHeader);
         var sessionUserId = (String)jwtBody.get("public_id");
@@ -64,7 +65,7 @@ public class InvoiceController {
     public ResponseEntity<InvoiceDTO> withdrawMoneyFromInvoice(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                                               @PathVariable String invoiceNumber,
                                                              @RequestBody InvoiceNumberWithPrice amount) {
-
+        logger.info("Withdraw money from invoice with invoice number {}. Amount: {}", invoiceNumber, amount.getAmount());
         var authorizationHeader = authorization.replace("Bearer ", "");
         var jwtBody = jwtUtil.retrieveAllClaims(authorizationHeader);
         var sessionUserId = (String)jwtBody.get("public_id");
