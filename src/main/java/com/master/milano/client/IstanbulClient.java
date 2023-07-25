@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.List;
 import java.util.UUID;
 
-@FeignClient(value = "istanbul", url = "http://localhost:8081")
+@FeignClient(value = "istanbul", url = "http://istanbul:8081")
 public interface IstanbulClient {
 
     @RequestMapping(method = RequestMethod.GET, value = "/user/{publicId}", produces = "application/json", consumes = "application/json")
