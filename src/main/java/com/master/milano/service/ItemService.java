@@ -310,8 +310,10 @@ public class ItemService {
 
         if(previousNumberLeft==0) {
             var allUsersForItem = itemInterestRepository.findAllByPublicId(UUID.fromString(publicId));
+            logger.info("All users that are interested for this item: {}", allUsersForItem);
             var listOfIds = allUsersForItem.stream().map(itemInterest -> UUID.fromString(itemInterest.getUserId())).collect(Collectors.toList());
-            Iterable<Long> idsForDelete = (Iterable<Long>) allUsersForItem.stream().map(itemInterest -> itemInterest.getId()).iterator();
+            logger.info("All users that are interested for this item: {}", listOfIds);
+//            var idsForDelete =  allUsersForItem.stream().map(itemInterest -> itemInterest.getId()).iterator();
             var usersWithEmails = istanbul.getAllUsersForPublicIds(listOfIds);
             var userEmails = usersWithEmails.stream().map(info -> info.getEmail()).collect(Collectors.toList());
             var itemAvailable = ItemAvailableAgain.builder()
@@ -322,7 +324,7 @@ public class ItemService {
             rabbitMqService.itemAvailableAgain(itemAvailable);
             //delete all users that were interested into this itme
             //verify if this actually work
-            itemInterestRepository.deleteAllById(idsForDelete);
+//            itemInterestRepository.deleteAllById(idsForDelete);
         }
         logger.info("Successfully increased number for item with id: {}", publicId);
         return itemManipulator.modelToDTO(foundedItem);
